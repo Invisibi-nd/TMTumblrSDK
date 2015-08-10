@@ -56,7 +56,7 @@ NSString *fullBlogName(NSString *blogName);
 
 - (void)xAuth:(NSString *)emailAddress password:(NSString *)password callback:(void(^)(NSError *))callback {
     return [[TMTumblrAuthenticator sharedInstance] xAuth:emailAddress password:password
-                                                callback:^(NSString *token, NSString *secret, NSError *error) {
+                                                callback:^(NSString *token, NSString *secret,NSURL *url, NSError *error) {
         self.OAuthToken = token;
         self.OAuthTokenSecret = secret;
         

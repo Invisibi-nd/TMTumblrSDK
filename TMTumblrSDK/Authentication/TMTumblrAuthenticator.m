@@ -42,23 +42,18 @@ NSDictionary *formEncodedDataToDictionary(NSData *data);
     return instance;
 }
 
-#ifdef __ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__
-
 - (void)authenticate:(NSString *)URLScheme callback:(TMAuthenticationCallback)callback {
     // Clear token secret in case authentication was previously started but not finished
     self.threeLeggedOAuthTokenSecret = nil;
-    
-    NSString *tokenRequestURLString = [NSString stringWithFormat:@"https://www.tumblr.com/oauth/request_token?oauth_callback=%@",
-                                       TMURLEncode([NSString stringWithFormat:@"%@://tumblr-authorize", URLScheme])];
+    NSString *tokenRequestURLString = [NSString stringWithFormat:@"https://www.tumblr.com/oauth/request_token?oauth_callback=%@",TMURLEncode([NSString stringWithFormat:@"%@://tumblr-authorize", URLScheme])];
     
     NSMutableURLRequest *request = mutableRequestWithURLString(tokenRequestURLString);
-    [[self class] signRequest:request withParameters:nil consumerKey:self.OAuthConsumerKey
-               consumerSecret:self.OAuthConsumerSecret token:nil tokenSecret:nil];
+    [[self class] signRequest:request withParameters:nil consumerKey:self.OAuthConsumerKey consumerSecret:self.OAuthConsumerSecret token:nil tokenSecret:nil];
     
     NSURLConnectionCompletionHandler handler = ^(NSURLResponse *response, NSData *data, NSError *error) {
         if (error) {
             if (callback) {
-                callback(nil, nil, error);
+                callback(nil, nil,nil, error);
             }
             
             return;
@@ -72,15 +67,15 @@ NSDictionary *formEncodedDataToDictionary(NSData *data);
             NSDictionary *responseParameters = formEncodedDataToDictionary(data);
             self.threeLeggedOAuthTokenSecret = responseParameters[@"oauth_token_secret"];
             
-            NSURL *authURL = [NSURL URLWithString:
-                              [NSString stringWithFormat:@"https://www.tumblr.com/oauth/authorize?oauth_token=%@",
-                               responseParameters[@"oauth_token"]]];
+            NSURL *authURL = [NSURL URLWithString:[NSString stringWithFormat:@"https://www.tumblr.com/oauth/authorize?oauth_token=%@",responseParameters[@"oauth_token"]]];
             
-            [[NSWorkspace sharedWorkspace] openURL:authURL];
+            if (callback) {
+                callback(nil, nil,authURL, errorWithStatusCode(statusCode));
+            }
             
         } else {
             if (callback) {
-                callback(nil, nil, errorWithStatusCode(statusCode));
+                callback(nil, nil,nil, errorWithStatusCode(statusCode));
             }
         }
     };
@@ -102,7 +97,7 @@ NSDictionary *formEncodedDataToDictionary(NSData *data);
     
     if ([[URLParameters allKeys] count] == 0) {
         if (self.threeLeggedOAuthCallback) {
-            self.threeLeggedOAuthCallback(nil, nil, [NSError errorWithDomain:@"Permission denied by user" code:0 userInfo:nil]);
+            self.threeLeggedOAuthCallback(nil, nil,nil, [NSError errorWithDomain:@"Permission denied by user" code:0 userInfo:nil]);
         }
         
         clearState();
@@ -124,7 +119,7 @@ NSDictionary *formEncodedDataToDictionary(NSData *data);
     NSURLConnectionCompletionHandler handler = ^(NSURLResponse *response, NSData *data, NSError *error) {
         if (error) {
             if (self.threeLeggedOAuthCallback) {
-                self.threeLeggedOAuthCallback(nil, nil, error);
+                self.threeLeggedOAuthCallback(nil, nil,nil, error);
             }
         } else {
             NSInteger statusCode = ((NSHTTPURLResponse *)response).statusCode;
@@ -133,10 +128,13 @@ NSDictionary *formEncodedDataToDictionary(NSData *data);
                 if (statusCode == 200) {
                     NSDictionary *responseParameters = formEncodedDataToDictionary(data);
                     
-                    self.threeLeggedOAuthCallback(responseParameters[@"oauth_token"], responseParameters[@"oauth_token_secret"], nil);
+                    self.threeLeggedOAuthCallback(responseParameters[@"oauth_token"],
+                                                  responseParameters[@"oauth_token_secret"],
+                                                  nil,
+                                                  errorWithStatusCode(statusCode));
                     
                 } else {
-                    self.threeLeggedOAuthCallback(nil, nil, errorWithStatusCode(statusCode));
+                    self.threeLeggedOAuthCallback(nil, nil,nil, errorWithStatusCode(statusCode));
                 }
             }
         }
@@ -149,7 +147,6 @@ NSDictionary *formEncodedDataToDictionary(NSData *data);
     return YES;
 }
 
-#endif
 
 - (void)xAuth:(NSString *)emailAddress password:(NSString *)password callback:(TMAuthenticationCallback)callback {
     NSDictionary *requestParameters = @{
@@ -169,7 +166,7 @@ NSDictionary *formEncodedDataToDictionary(NSData *data);
     NSURLConnectionCompletionHandler handler = ^(NSURLResponse *response, NSData *data, NSError *error) {
         if (error) {
             if (callback) {
-                callback(nil, nil, error);
+                callback(nil, nil,nil, error);
             }
             
             return;
@@ -181,12 +178,12 @@ NSDictionary *formEncodedDataToDictionary(NSData *data);
             NSDictionary *responseParameters = formEncodedDataToDictionary(data);
 
             if (callback) {
-                callback(responseParameters[@"oauth_token"], responseParameters[@"oauth_token_secret"], nil);
+                callback(responseParameters[@"oauth_token"], responseParameters[@"oauth_token_secret"],nil, nil);
             }
             
         } else {
             if (callback) {
-                callback(nil, nil, errorWithStatusCode(statusCode));
+                callback(nil, nil,nil, errorWithStatusCode(statusCode));
             }
         }
     };
